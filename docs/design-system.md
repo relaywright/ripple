@@ -9,6 +9,17 @@ A contemporary operations atlas: warm paper around a deep petrol cartographic st
 - Respect reduced motion. All controls must have keyboard focus, labels, and adequate contrast. Decorative map motion must stop when paused.
 - Mobile layout must retain every function without horizontal page overflow.
 
+## Typography
+
+Use the shared `:root` scale in `src/styles.css`: `--type-label` 12px,
+`--type-body` 14px, `--type-body-lg` 16px, `--type-heading` 20px,
+`--type-heading-lg` 24px, `--type-title` 32px, and `--type-display` 48px.
+Reading text and form labels use the body steps; compact uppercase labels and
+chart annotations use the label step. Headings stay larger than reading text.
+All visible text must render at least 12px on screen, including at 390px.
+SVG annotations compensate for viewBox scaling using their container width;
+judge their minimum by the computed font size multiplied by the screen scale.
+
 ## Release bar
 
 Seeded simulation with invariant tests. Worker computation. Four working policies. Adjustable disruptions. Replay. Transparent model. JSON round trip and validation. Shareable URL. Downloadable results. Browser checks at desktop and 390px. MIT license, setup docs, limitations, CI, screenshots.

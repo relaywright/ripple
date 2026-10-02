@@ -1,6 +1,9 @@
 .ripple-map {
   container-name: network-map;
   container-type: inline-size;
+  /* The 1000-unit viewBox scales with this container's width. */
+  --map-label-size: calc(var(--type-label) * 1000px / 100cqw);
+  --map-name-size: calc(var(--type-body) * 1000px / 100cqw);
   --map-text: #e5f0db;
   --map-soft: #abc4b9;
   --map-mint: #c4ee9d;
@@ -37,7 +40,7 @@
   align-items: center;
   gap: 9px;
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px;
+  font-size: var(--type-body);
   letter-spacing: 1.5px;
   color: #c4d6cc;
 }
@@ -47,7 +50,7 @@
 }
 .ripple-map__heading p {
   margin: 8px 0 0;
-  font-size: 17px;
+  font-size: var(--type-heading);
   font-weight: 600;
   letter-spacing: -0.6px;
   color: #ebf2e6;
@@ -65,7 +68,7 @@
   border-radius: 6px;
   background: #102a2ce8;
   color: #c2d5c8;
-  font-size: 10px;
+  font-size: var(--type-body);
   font-weight: 600;
   line-height: 1.2;
 }
@@ -108,19 +111,20 @@
   font-family: 'IBM Plex Mono', monospace;
   fill: #94b6a8;
   font-weight: 400;
-  font-size: 10px;
+  font-size: var(--map-label-size);
   letter-spacing: 2px;
 }
 .ripple-map__continent {
   fill: #a6bdb0;
   opacity: 0.64;
-  font-size: 9px;
+  font-size: var(--map-label-size);
+  text-anchor: middle;
   letter-spacing: 2.5px;
 }
 .ripple-map__ocean {
   opacity: 0.56;
   letter-spacing: 5px;
-  font-size: 12px;
+  font-size: var(--map-label-size);
 }
 .ripple-map__compass {
   stroke: #84a79a;
@@ -218,7 +222,7 @@
 }
 .ripple-map__node-label {
   fill: #edf2e3;
-  font-size: 12px;
+  font-size: var(--map-name-size);
   font-weight: 600;
   letter-spacing: 0.1px;
   paint-order: stroke;
@@ -229,7 +233,7 @@
 .ripple-map__node-sublabel {
   fill: #b1cbb9;
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 8px;
+  font-size: var(--map-label-size);
   letter-spacing: 1px;
   paint-order: stroke;
   stroke: #173d3b;
@@ -263,7 +267,7 @@
   gap: 12px;
   color: #abc9b8;
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 8px;
+  font-size: var(--type-label);
   letter-spacing: 0.45px;
   text-transform: uppercase;
 }
@@ -273,7 +277,7 @@
   gap: 6px;
 }
 .ripple-map__node-country {
-  font-size: 8px;
+  font-size: var(--type-label);
   opacity: 0.88;
 }
 .ripple-map__inspector-main {
@@ -287,7 +291,7 @@
   margin: 0;
   color: #f0f4e6;
   font-family: Manrope, sans-serif;
-  font-size: 17px;
+  font-size: var(--type-heading);
   letter-spacing: -0.5px;
   line-height: 1.4;
   font-weight: 650;
@@ -297,7 +301,7 @@
   margin-top: 3px;
   color: #aac1b7;
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px;
+  font-size: var(--type-label);
   letter-spacing: 0.2px;
 }
 .ripple-map__metric {
@@ -308,7 +312,7 @@
   display: block;
   font-family: 'IBM Plex Mono', monospace;
   color: #d3efad;
-  font-size: 21px;
+  font-size: var(--type-heading);
   line-height: 1.25;
   letter-spacing: -0.75px;
   font-weight: 500;
@@ -317,7 +321,7 @@
   display: block;
   margin-top: 3px;
   color: #bfd0c1;
-  font-size: 8px;
+  font-size: var(--type-label);
   line-height: 1.3;
 }
 .ripple-map__inspector > p {
@@ -325,7 +329,7 @@
   padding-top: 8px;
   border-top: 1px solid #436052;
   color: #bdd0c3;
-  font-size: 10px;
+  font-size: var(--type-body);
   line-height: 1.5;
 }
 .ripple-map__select-hint {
@@ -335,7 +339,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
+  font-size: var(--type-body);
   color: #a9bfb4;
 }
 .ripple-map__footer {
@@ -349,7 +353,7 @@
   align-items: center;
   gap: 22px;
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px;
+  font-size: var(--type-label);
   letter-spacing: 0.1px;
   color: #bdcec3;
 }
@@ -374,11 +378,11 @@
 .ripple-map__legend .ripple-map__illustration {
   margin-left: auto;
   color: #a5beb3;
-  font-size: 8px;
+  font-size: var(--type-label);
 }
 .ripple-map__policy-note {
   color: #b1c5b9;
-  font-size: 10px;
+  font-size: var(--type-body);
   line-height: 1.6;
   margin: 8px 0 0;
 }
@@ -399,6 +403,14 @@
 @media (min-width: 1500px) {
   .ripple-map__canvas {
     max-height: 440px;
+    --map-label-size: max(
+      calc(var(--type-label) * 1000px / 100cqw),
+      calc(var(--type-label) * 415 / 440)
+    );
+    --map-name-size: max(
+      calc(var(--type-body) * 1000px / 100cqw),
+      calc(var(--type-body) * 415 / 440)
+    );
   }
 }
 @container network-map (max-width: 900px) {
@@ -407,12 +419,12 @@
     left: 20px;
   }
   .ripple-map__heading p {
-    font-size: 15px;
+    font-size: var(--type-body-lg);
   }
   .ripple-map__event {
     top: 18px;
     right: 20px;
-    font-size: 9px;
+    font-size: var(--type-label);
   }
   .ripple-map__inspector {
     width: 278px;
@@ -421,13 +433,13 @@
     padding: 11px 13px;
   }
   .ripple-map__inspector h3 {
-    font-size: 16px;
+    font-size: var(--type-body-lg);
   }
   .ripple-map__inspector > p {
-    font-size: 9px;
+    font-size: var(--type-body);
   }
   .ripple-map__select-hint {
-    font-size: 9px;
+    font-size: var(--type-label);
     left: 20px;
     bottom: 17px;
   }
@@ -439,7 +451,7 @@
   }
   .ripple-map__legend {
     gap: 16px;
-    font-size: 8px;
+    font-size: var(--type-label);
   }
 }
 @container network-map (max-width: 600px) {
@@ -448,34 +460,47 @@
     left: 16px;
   }
   .ripple-map__eyebrow {
-    font-size: 8px;
+    font-size: var(--type-label);
     letter-spacing: 1px;
   }
   .ripple-map__heading p {
-    font-size: 14px;
+    font-size: var(--type-body-lg);
     letter-spacing: -0.35px;
     margin-top: 7px;
   }
   .ripple-map__event {
-    top: 63px;
+    top: 84px;
     left: 16px;
     right: auto;
-    font-size: 8px;
+    font-size: var(--type-label);
     padding: 5px 7px;
     border-radius: 4px;
   }
   .ripple-map__canvas {
-    height: 280px;
+    height: 320px;
     min-height: 0;
-    padding-top: 48px;
+    padding-top: 84px;
     box-sizing: border-box;
+    /* Available viewBox height is 320px minus the 84px heading inset. */
+    --map-label-size: max(
+      calc(var(--type-label) * 1000px / 100cqw),
+      calc(var(--type-label) * 415 / 236)
+    );
+    --map-name-size: max(
+      calc(var(--type-body) * 1000px / 100cqw),
+      calc(var(--type-body) * 415 / 236)
+    );
   }
   .ripple-map__continent {
-    font-size: 14px;
+    font-size: var(--map-label-size);
+  }
+  .ripple-map__continent + .ripple-map__continent {
+    transform: translateY(-55px);
   }
   .ripple-map__ocean {
-    font-size: 16px;
+    font-size: var(--map-label-size);
     letter-spacing: 3px;
+    transform: translateY(185px);
   }
   .ripple-map__node-label,
   .ripple-map__node-sublabel {
@@ -483,8 +508,19 @@
   }
   .ripple-map__node.is-selected .ripple-map__node-label {
     display: block;
-    font-size: 23px;
+    font-size: var(--map-name-size);
+    text-anchor: middle;
     stroke-width: 5;
+  }
+  /* Below-node labels need room for the larger glyphs above their baseline. */
+  .ripple-map__node-label[y='26'],
+  .ripple-map__node-label[y='27'],
+  .ripple-map__node-label[y='28'],
+  .ripple-map__node-label[y='35'] {
+    dominant-baseline: text-before-edge;
+  }
+  .ripple-map__node-label[y='-1'] {
+    transform: translateY(-20px);
   }
   .ripple-map__node-core {
     stroke-width: 1.5;
@@ -505,23 +541,23 @@
     padding: 12px 14px;
   }
   .ripple-map__inspector-top {
-    font-size: 9px;
+    font-size: var(--type-label);
   }
   .ripple-map__inspector h3 {
-    font-size: 17px;
+    font-size: var(--type-heading);
   }
   .ripple-map__inspector > p {
-    font-size: 11px;
+    font-size: var(--type-body);
     line-height: 1.5;
   }
   .ripple-map__coordinates {
-    font-size: 9px;
+    font-size: var(--type-label);
   }
   .ripple-map__metric strong {
-    font-size: 22px;
+    font-size: var(--type-heading-lg);
   }
   .ripple-map__metric span {
-    font-size: 9px;
+    font-size: var(--type-label);
   }
   .ripple-map__mobile-nodes {
     display: flex;
@@ -540,7 +576,7 @@
     padding: 6px 9px;
     color: #c4d8cb;
     font:
-      500 10px Manrope,
+      500 var(--type-body) Manrope,
       sans-serif;
     cursor: pointer;
   }
@@ -559,16 +595,16 @@
   .ripple-map__legend {
     gap: 18px;
     flex-wrap: wrap;
-    font-size: 9px;
+    font-size: var(--type-label);
     row-gap: 10px;
   }
   .ripple-map__legend .ripple-map__illustration {
     flex-basis: 100%;
     margin: 0;
-    font-size: 9px;
+    font-size: var(--type-label);
   }
   .ripple-map__policy-note {
-    font-size: 10px;
+    font-size: var(--type-body);
     line-height: 1.6;
     margin-top: 9px;
   }
