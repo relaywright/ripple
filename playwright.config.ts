@@ -28,6 +28,17 @@ export default defineConfig({
         viewport: { width: 390, height: 844 },
       },
     },
+    // Text sizing relies on CSS math that browsers adopt at different times.
+    {
+      name: 'desktop-firefox',
+      testMatch: '**/legibility.e2e.ts',
+      use: { ...devices['Desktop Firefox'], viewport: { width: 1440, height: 1000 } },
+    },
+    {
+      name: 'narrow-firefox',
+      testMatch: '**/legibility.e2e.ts',
+      use: { ...devices['Desktop Firefox'], viewport: { width: 390, height: 844 } },
+    },
   ],
   webServer: {
     command: 'npm run preview -- --port 4317 --strictPort',

@@ -25,7 +25,8 @@ async function assertLegible(page: Page, view: string) {
       const ctm = element instanceof SVGGraphicsElement ? element.getScreenCTM() : null;
       const scale = ctm ? Math.hypot(ctm.a, ctm.b) : 1;
       const renderedSize = fontSize * scale;
-      return renderedSize < 12
+      // Allow trigonometric rounding (11.997px in Firefox), never a visible shortfall.
+      return renderedSize < 11.99
         ? [
             `<${element.tagName.toLowerCase()}> ${JSON.stringify(text)}: ${renderedSize.toFixed(3)}px`,
           ]
@@ -39,6 +40,22 @@ async function assertLegible(page: Page, view: string) {
       `${view}: no horizontal page overflow`,
     )
     .toBe(true);
+  const covered = await page.evaluate(() => {
+    const card = document.querySelector('.ripple-map__inspector')?.getBoundingClientRect();
+    if (!card) return [];
+    const labels = document.querySelectorAll('.ripple-map svg text, .ripple-map__select-hint');
+    return Array.from(labels).flatMap((label) => {
+      const box = label.getBoundingClientRect();
+      const overlaps =
+        box.width > 0 &&
+        box.right > card.left &&
+        box.left < card.right &&
+        box.bottom > card.top &&
+        box.top < card.bottom;
+      return overlaps ? [JSON.stringify(label.textContent?.trim())] : [];
+    });
+  });
+  expect.soft(covered, `${view}: map labels hidden by the map inspector card`).toEqual([]);
 }
 
 test('workspace text stays at least 12px on screen with results showing', async ({ page }) => {

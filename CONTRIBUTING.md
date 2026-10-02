@@ -28,11 +28,11 @@ Dependencies should solve a concrete problem and have a compatible license. Comm
 ```sh
 npm run check
 npm run build
-npx playwright install chromium
+npx playwright install chromium firefox
 npm run test:e2e
 ```
 
-Browser tests run against the production preview. On Linux, the initial Playwright installation may need `npx playwright install --with-deps chromium`.
+Browser tests run against the production preview. On Linux, the initial Playwright installation may need `npx playwright install --with-deps chromium firefox`.
 
 Automated accessibility checks catch a subset of problems. Also check the changed flow with the keyboard and at 390px width. Text, colors, and focus should remain understandable without animation.
 

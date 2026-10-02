@@ -1,9 +1,10 @@
 .ripple-map {
   container-name: network-map;
   container-type: inline-size;
-  /* The 1000-unit viewBox scales with this container's width. */
-  --map-label-size: calc(var(--type-label) * 1000px / 100cqw);
-  --map-name-size: calc(var(--type-body) * 1000px / 100cqw);
+  /* The 1000-unit viewBox scales with this container's width. tan(atan2(a, b))
+     is a / b as a plain number; Firefox cannot divide one length by another. */
+  --map-label-size: calc(var(--type-label) * tan(atan2(1000px, 100cqw)));
+  --map-name-size: calc(var(--type-body) * tan(atan2(1000px, 100cqw)));
   --map-text: #e5f0db;
   --map-soft: #abc4b9;
   --map-mint: #c4ee9d;
@@ -246,11 +247,11 @@
 .ripple-map__node.is-inactive .ripple-map__node-label {
   fill: #b2c5bc;
 }
+/* Sits below the map: at readable sizes the labels fill the map's lower edge. */
 .ripple-map__inspector {
-  position: absolute;
-  left: 35%;
-  bottom: 19px;
-  width: 300px;
+  position: relative;
+  max-width: 640px;
+  margin: 0 20px 18px;
   padding: 13px 15px 12px;
   background: linear-gradient(120deg, #204240f5, #153431f5);
   border: 1px solid #49665a;
@@ -333,9 +334,7 @@
   line-height: 1.5;
 }
 .ripple-map__select-hint {
-  position: absolute;
-  left: 25px;
-  bottom: 21px;
+  margin: 0 20px 16px;
   display: flex;
   align-items: center;
   gap: 5px;
@@ -404,11 +403,11 @@
   .ripple-map__canvas {
     max-height: 440px;
     --map-label-size: max(
-      calc(var(--type-label) * 1000px / 100cqw),
+      calc(var(--type-label) * tan(atan2(1000px, 100cqw))),
       calc(var(--type-label) * 415 / 440)
     );
     --map-name-size: max(
-      calc(var(--type-body) * 1000px / 100cqw),
+      calc(var(--type-body) * tan(atan2(1000px, 100cqw))),
       calc(var(--type-body) * 415 / 440)
     );
   }
@@ -427,9 +426,6 @@
     font-size: var(--type-label);
   }
   .ripple-map__inspector {
-    width: 278px;
-    left: 34%;
-    bottom: 14px;
     padding: 11px 13px;
   }
   .ripple-map__inspector h3 {
@@ -440,8 +436,6 @@
   }
   .ripple-map__select-hint {
     font-size: var(--type-label);
-    left: 20px;
-    bottom: 17px;
   }
   .ripple-map__canvas {
     min-height: 365px;
@@ -483,11 +477,11 @@
     box-sizing: border-box;
     /* Available viewBox height is 320px minus the 84px heading inset. */
     --map-label-size: max(
-      calc(var(--type-label) * 1000px / 100cqw),
+      calc(var(--type-label) * tan(atan2(1000px, 100cqw))),
       calc(var(--type-label) * 415 / 236)
     );
     --map-name-size: max(
-      calc(var(--type-body) * 1000px / 100cqw),
+      calc(var(--type-body) * tan(atan2(1000px, 100cqw))),
       calc(var(--type-body) * 415 / 236)
     );
   }
@@ -534,9 +528,7 @@
     display: none;
   }
   .ripple-map__inspector {
-    position: relative;
-    inset: auto;
-    width: auto;
+    max-width: none;
     margin: 0 16px 14px;
     padding: 12px 14px;
   }

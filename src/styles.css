@@ -126,7 +126,7 @@ svg {
 }
 .app-shell {
   display: grid;
-  grid-template-columns: 252px minmax(0, 1fr);
+  grid-template-columns: 292px minmax(0, 1fr);
   min-height: 100vh;
 }
 .sidebar {
@@ -996,7 +996,7 @@ h1 > span {
 .inventory-chart {
   container-type: inline-size;
   /* Keep annotations at the label step as the 800-unit viewBox shrinks. */
-  --chart-label-size: calc(var(--type-label) * 800px / 100cqw);
+  --chart-label-size: calc(var(--type-label) * tan(atan2(800px, 100cqw)));
   border: 1px solid #dae1d1;
   border-radius: 10px;
   background: #fffef8;
@@ -1619,7 +1619,7 @@ h1 > span {
 }
 @media (min-width: 1650px) {
   .app-shell {
-    grid-template-columns: 270px minmax(0, 1fr);
+    grid-template-columns: 312px minmax(0, 1fr);
   }
   .sidebar {
     padding-left: 25px;
@@ -1643,7 +1643,7 @@ h1 > span {
 }
 @media (max-width: 1200px) {
   .app-shell {
-    grid-template-columns: 224px minmax(0, 1fr);
+    grid-template-columns: 260px minmax(0, 1fr);
   }
   .sidebar {
     padding: 24px 15px 18px;

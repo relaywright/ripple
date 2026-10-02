@@ -19,6 +19,9 @@ chart annotations use the label step. Headings stay larger than reading text.
 All visible text must render at least 12px on screen, including at 390px.
 SVG annotations compensate for viewBox scaling using their container width;
 judge their minimum by the computed font size multiplied by the screen scale.
+Compute that scale with `tan(atan2(a, b))` rather than dividing lengths, which
+Firefox does not support. The map inspector sits below the map, never over it,
+so no label is hidden at any width.
 
 ## Release bar
 
