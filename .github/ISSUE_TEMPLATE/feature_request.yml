@@ -1,0 +1,17 @@
+name: Suggest an improvement
+description: Explain a user problem or a model improvement.
+title: 'Idea: '
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What decision or task is difficult today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would improve it?
+      description: For model changes, include assumptions and a reproducible example.
+    validations:
+      required: true
