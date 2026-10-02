@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "models": {
+    "gpt-6.1-sol": ["high"]
+  },
+  "max_seconds": 3600,
+  "allow_network": true,
+  "required_checks": ["verify"],
+  "verification": [
+    ["npm", "ci"],
+    ["npm", "run", "check"],
+    ["npm", "run", "build"],
+    ["npm", "run", "format:check"]
+  ]
+}
