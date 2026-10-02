@@ -2,34 +2,34 @@
 
 Use a current desktop browser. Start from a fresh page with the default port-closure scenario. All numbers you see are synthetic simulation results.
 
-## The opening: a decision with consequences
+## Start with the decision
 
-"What happens if a port closes for longer than the stock we have on hand? RIPPLE lets me stress a small supply network and compare the responses."
+“What happens if a port closes for longer than the stock we have on hand? And at what point is it worth paying for a different response?”
 
-Point to the network, inventory curve, and the controls. Explain that the map is an illustration of the model, not a live tracking display.
+Point to the network and inventory curve. The map illustrates the model; moving marks are not shipment tracking. Compare keeping the current plan, adding stock, rerouting freight, and changing the sourcing mix.
 
-## Change one assumption
+## Show the Atlas
 
-Increase **Disruption duration**, then select **Compare strategies**. Compare fulfilled demand and total cost for the four policies. Inspect the uncertainty band. Avoid quoting a savings number from an earlier run: the result changes with the inputs and model version.
+Open **Resilience atlas** and run the experiment. The progress display covers a bounded grid of disruption durations and severities, with 30 trials per policy in each case. Let the grid complete before presenting its coverage or exporting the evidence.
 
-"Every strategy sees matched random conditions. That makes the differences easier to attribute to the strategy. The shaded band shows the spread across simulated trials."
+“Instead of optimizing for one assumption, I can see where a plan stops meeting a service target. Each cell selects the cheapest qualifying strategy. If none qualify, the map says so.”
 
-## Trace the result
+Change the service target and point out that the completed grid updates without a new simulation. Explain the target precisely: it is mean fulfilled demand over the simulated horizon, averaged across trials. It does not guarantee service on every day.
 
-Move **Simulation day** through the disruption. Show the inventory depletion and recovery in the sample replay.
+“These are equally weighted cases I chose to explore. The fraction that meets the target is not a probability.”
 
-"The replay follows one seeded trial. The range on the chart summarizes many trials. Those are different views of the same experiment."
+## Open the evidence behind a cell
 
-Switch to **One supplier stops** or **Demand takes off** and inspect the comparison again. Explain why the assumptions can change which strategy performs well. There is no universal best plan.
+Select a demanding case and inspect the four alternatives. Open that case in the lab. Confirm its duration, severity, seed, and 30-trial count, then move **Simulation day** through the disruption.
 
-## Show the engineering
+“The replay follows one seeded trial. The shaded inventory band summarizes the ensemble. The drilldown uses the exact case from the Atlas.”
 
-Use **About the model** to expose the assumptions. Use **Share scenario**, open the resulting link, and reproduce the experiment. Export results so the numerical output can be inspected beyond the interface.
+Use **Back to resilience atlas** to return to the completed grid. Share its configuration or export the manifest, full policy CSV, and HTML brief. Open the model notes to expose the assumptions rather than presenting a ranking as a universal recommendation.
 
-"This runs in the browser without a server or API key. The simulation is separate from React, computation runs in a worker, and the repository contains repeatability tests and browser checks."
+“This runs in the browser without a server or API key. The simulation is separate from React, computation runs in a worker, and the repository contains repeatability tests and browser checks.”
 
 ## Describe the collaboration accurately
 
-"I set out to build a portfolio piece around operations decisions, with a high standard for usability and a working open-source release. I worked with AI agents to develop the application and its validation. The source, model assumptions, and tests are available for review."
+“I set out to build a portfolio piece around operations decisions, with a high standard for usability and a working open-source release. I worked with AI agents to develop the application and its verification. The source, model assumptions, and tests are available for review.”
 
-Do not imply real customer deployment, measured cost savings, or hand-written implementation. The strongest evidence is a working experiment someone else can reproduce.
+Do not imply real customer deployment, measured cost savings, a novel simulation method, or hand-written implementation. The strongest evidence is a working decision that another person can trace and reproduce.

@@ -2,7 +2,7 @@
 
 ### Break the chain. Find a better plan.
 
-A supply-chain stress lab that makes the cost of a disruption visible. Close a port, lose a supplier, or spike demand. Compare four responses against the same simulated conditions, then replay the consequences day by day.
+A supply-chain stress lab that makes the cost of a disruption visible. Close a port, lose a supplier, or spike demand. Compare four responses against the same simulated conditions, replay the consequences day by day, and map where each strategy meets a service target.
 
 **[Launch the live lab](https://relaywright.github.io/ripple/)** · [Watch the product walkthrough](artifacts/ripple-walkthrough.mp4) · [Read the model](docs/MODEL.md)
 
@@ -18,9 +18,18 @@ RIPPLE is a synthetic, single-product educational simulation. Its numbers are mo
 2. Select **Compare strategies** to compare keeping the current plan, carrying more stock, rerouting freight, and shifting sourcing toward Mexico.
 3. Inspect the tradeoff between fulfilled demand and cost. A more resilient plan is not automatically the cheapest.
 4. Move **Simulation day** to replay inventory and the network. The uncertainty band summarizes many trials; replay follows one seeded trial.
-5. Use **Share scenario** to reproduce the inputs, or **Export results** to keep an inspectable record.
+5. Open **Resilience atlas** to explore a grid of disruption durations and severities. Set a service target, inspect an individual case, and return to its exact replay.
+6. Share the inputs or export the evidence so someone else can reproduce the comparison.
 
 See the [two-minute walkthrough](docs/SHOWCASE.md) for a guided demo.
+
+## Map the decision boundary
+
+The **Resilience Atlas** compares four strategies across up to 36 cases, with 30 seeded trials per policy in each case. A service target makes the decision rule explicit: choose the lowest modeled cost among policies that meet the target, or show that none qualify. Changing the target reuses the completed results.
+
+![RIPPLE Resilience Atlas, showing which strategies meet a service target across disruption durations and severities](artifacts/ripple-atlas.png)
+
+Select any cell to examine the alternatives and open the exact case in the lab. Share the Atlas configuration or download its manifest, full policy CSV, and standalone HTML brief. Coverage describes the cases tested, not a probability of real-world success. Read the [Atlas reference](docs/ATLAS.md) for the target definition, sources, and limits.
 
 ## Run locally
 
@@ -42,6 +51,8 @@ Open the local address printed in your terminal. There is no environment file, d
 | Uncertainty is visible                          | Monte Carlo trials produce inventory percentile bands and service-level ranges. These are simulated ranges, not calibrated forecast intervals. |
 | Computation is separated from presentation      | The simulation runs in a Web Worker so React handles controls and drawing.                                                                     |
 | Inputs cross a validation boundary              | JSON imports and shared URLs are checked before they become simulation inputs.                                                                 |
+| Decisions can be traced to an experiment        | Atlas cells retain their exact scenario and 30-trial count; evidence records the target, policy metrics, and model version.                    |
+| Larger experiments remain inspectable           | A bounded grid reports progress and supports cancellation; changing the target reclassifies cached results.                                    |
 | The product can be reviewed without credentials | Static build, local fonts and map data, no accounts, analytics, or runtime external APIs.                                                      |
 | Changes have a release check                    | Type checking, simulation tests, production build, and browser tests run in CI.                                                                |
 

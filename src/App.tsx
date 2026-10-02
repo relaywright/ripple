@@ -16,6 +16,7 @@ import {
   GitBranch,
   Code2,
   Layers3,
+  Grid3X3,
   Play,
   Pause,
   Radio,
@@ -31,10 +32,14 @@ import {
   X,
 } from 'lucide-react';
 import { DEFAULT_SCENARIO, POLICIES, PRESETS } from './simulation';
+import { ATLAS_TRIALS } from './simulation/atlas';
 import type { ExperimentResult, PolicyId, Scenario } from './simulation/types';
 import NetworkMap from './components/NetworkMap';
 import InventoryChart from './components/InventoryChart';
 import Dialog from './components/Dialog';
+import ResilienceAtlas from './components/ResilienceAtlas';
+import { decodeAtlas, encodeAtlas, parseAtlasManifest } from './lib/atlas-export';
+import type { AtlasManifest } from './lib/atlas-export';
 import { dollars, number, percent } from './lib/format';
 import {
   decodeScenario,
@@ -45,13 +50,21 @@ import {
 } from './lib/scenario';
 import { reportHTML, resultsCSV } from './lib/export';
 
-type Tab = 'lab' | 'compare';
+type Tab = 'lab' | 'compare' | 'atlas';
 type Modal = 'model' | 'tour' | 'export' | 'share' | null;
 const iconFor = { port: Ship, supplier: Factory, demand: TrendingUp, none: Waves };
 const storageKey = 'ripple-scenario-v1';
 
-function initialWorkspace(): { scenario: Scenario; message: string } {
+function initialWorkspace(): { scenario: Scenario; message: string; atlas?: AtlasManifest } {
   try {
+    if (location.hash.startsWith('#atlas=')) {
+      const atlas = decodeAtlas(location.hash.slice(7));
+      return {
+        scenario: atlas.baseScenario,
+        atlas,
+        message: 'Shared atlas loaded. Rebuilding its exact sampled cases and service target.',
+      };
+    }
     if (location.hash.startsWith('#scenario='))
       return {
         scenario: decodeScenario(location.hash.slice(10)),
@@ -81,7 +94,14 @@ export default function App() {
   const [policy, setPolicy] = useState<PolicyId>('baseline');
   const [day, setDay] = useState(Math.min(28, initial.scenario.horizon - 1));
   const [playing, setPlaying] = useState(false);
-  const [tab, setTab] = useState<Tab>('lab');
+  const [tab, setTab] = useState<Tab>(initial.atlas ? 'atlas' : 'lab');
+  const [atlasRequest, setAtlasRequest] = useState<{ key: number; target: number } | undefined>(
+    initial.atlas ? { key: 0, target: initial.atlas.target } : undefined,
+  );
+  const [fromAtlas, setFromAtlas] = useState(false);
+  const atlasRequestId = useRef(0);
+  const mainRef = useRef<HTMLElement>(null);
+  const [shareContext, setShareContext] = useState<'scenario' | 'atlas'>('scenario');
   const [modal, setModal] = useState<Modal>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tourStep, setTourStep] = useState(0);
@@ -157,11 +177,20 @@ export default function App() {
   }, [playing, scenario.horizon]);
   useEffect(() => {
     const loadHash = () => {
+      if (location.hash.startsWith('#atlas=')) {
+        try {
+          loadAtlas(decodeAtlas(location.hash.slice(7)));
+        } catch (error) {
+          setNotice(error instanceof Error ? error.message : 'Invalid atlas link.');
+        }
+        return;
+      }
       if (!location.hash.startsWith('#scenario=')) return;
       try {
         setScenario(decodeScenario(location.hash.slice(10)));
         setNotice('Shared experiment loaded.');
         setDay(28);
+        navigate('lab');
       } catch (e) {
         setNotice(e instanceof Error ? e.message : 'Invalid scenario link.');
       }
@@ -181,6 +210,31 @@ export default function App() {
   const ready = !!result && !busy && !error;
   const savings = baseline && best ? baseline.totalCost - best.totalCost : 0;
 
+  function navigate(next: Tab) {
+    setTab(next);
+    setPlaying(false);
+    requestAnimationFrame(() => {
+      mainRef.current?.focus({ preventScroll: true });
+      mainRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
+    });
+  }
+  function loadAtlas(manifest: AtlasManifest) {
+    setScenario(manifest.baseScenario);
+    setDay(Math.min(28, manifest.baseScenario.horizon - 1));
+    setAtlasRequest({ key: ++atlasRequestId.current, target: manifest.target });
+    setNotice('Atlas settings loaded. Rebuilding the exact scan.');
+    setFromAtlas(false);
+    navigate('atlas');
+  }
+  function openAtlasScenario(next: Scenario, nextPolicy: PolicyId) {
+    setScenario(next);
+    setPolicy(nextPolicy);
+    setDay(Math.min(next.startDay + Math.floor(next.duration / 2), next.horizon - 1));
+    setFromAtlas(true);
+    setNotice('Exact atlas case: same seed and 30 trials per strategy.');
+    if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+    navigate('lab');
+  }
   function update(patch: Partial<Scenario>) {
     setScenario((current) => ({ ...current, ...patch }));
     if (location.hash) history.replaceState(null, '', location.pathname + location.search);
@@ -207,18 +261,47 @@ export default function App() {
     try {
       if (file.size > MAX_SCENARIO_BYTES)
         throw new Error('That file is too large. Use a RIPPLE scenario under 16 KB.');
-      const imported = parseScenario(await file.text());
+      const text = await file.text();
+      let kind: unknown;
+      try {
+        kind = JSON.parse(text)?.kind;
+      } catch {
+        /* The scenario parser supplies the normal JSON error. */
+      }
+      if (kind === 'ripple-atlas') {
+        loadAtlas(parseAtlasManifest(text));
+        if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+        event.target.value = '';
+        return;
+      }
+      const imported = parseScenario(text);
       setScenario(imported);
       setDay(Math.min(28, imported.horizon - 1));
       setPolicy('baseline');
       setNotice(`Imported “${imported.name}”.`);
+      setFromAtlas(false);
+      navigate('lab');
       if (location.hash) history.replaceState(null, '', location.pathname + location.search);
     } catch (e) {
       setNotice(e instanceof Error ? e.message : 'That scenario could not be imported.');
     }
     event.target.value = '';
   }
+  async function shareAtlas(manifest: AtlasManifest) {
+    const link = `${location.origin}${location.pathname}#atlas=${encodeAtlas(manifest)}`;
+    setShareLink(link);
+    setShareContext('atlas');
+    setCopied(false);
+    setModal('share');
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+    } catch {
+      /* Selectable link is always available. */
+    }
+  }
   async function share() {
+    setShareContext('scenario');
     const link = `${location.origin}${location.pathname}#scenario=${encodeScenario(scenario)}`;
     setShareLink(link);
     setCopied(false);
@@ -232,7 +315,7 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${tab === 'atlas' ? 'atlas-view' : ''}`}>
       <a className="skip-link" href="#main">
         Skip to experiment
       </a>
@@ -288,7 +371,14 @@ export default function App() {
                   </span>
                   <span>
                     <strong>{p.title}</strong>
-                    <small>{p.subtitle}</small>
+                    <small>
+                      {active &&
+                      (Object.keys(p.scenario) as (keyof Scenario)[]).some(
+                        (key) => scenario[key] !== p.scenario[key],
+                      )
+                        ? 'Custom conditions'
+                        : p.subtitle}
+                    </small>
                   </span>
                   {active && <span className="active-dot" />}
                 </button>
@@ -303,7 +393,9 @@ export default function App() {
           <div className="range-field">
             <div>
               <label htmlFor="duration">Disruption duration</label>
-              <output htmlFor="duration">{scenario.duration} days</output>
+              <output htmlFor="duration">
+                {tab === 'atlas' ? 'Swept in atlas' : `${scenario.duration} days`}
+              </output>
             </div>
             <input
               id="duration"
@@ -311,7 +403,7 @@ export default function App() {
               min="1"
               max={scenario.horizon - scenario.startDay}
               value={scenario.duration}
-              disabled={scenario.disruption === 'none'}
+              disabled={scenario.disruption === 'none' || tab === 'atlas'}
               onChange={(e) => update({ duration: Number(e.target.value) })}
             />
             <div className="range-endpoints">
@@ -322,7 +414,9 @@ export default function App() {
           <div className="range-field">
             <div>
               <label htmlFor="severity">Severity</label>
-              <output htmlFor="severity">{Math.round(scenario.severity * 100)}%</output>
+              <output htmlFor="severity">
+                {tab === 'atlas' ? 'Swept in atlas' : `${Math.round(scenario.severity * 100)}%`}
+              </output>
             </div>
             <input
               id="severity"
@@ -331,17 +425,19 @@ export default function App() {
               max="100"
               step="any"
               value={scenario.severity * 100}
-              disabled={scenario.disruption === 'none'}
+              disabled={scenario.disruption === 'none' || tab === 'atlas'}
               onChange={(e) => update({ severity: Number(e.target.value) / 100 })}
             />
             <p className="field-hint">
-              {scenario.disruption === 'demand'
-                ? 'Additional demand during the surge.'
-                : scenario.disruption === 'supplier'
-                  ? 'Production capacity removed.'
-                  : scenario.disruption === 'none'
-                    ? 'No disruption. Explore everyday uncertainty.'
-                    : 'Port handling capacity removed.'}
+              {tab === 'atlas'
+                ? 'Duration and severity vary across the atlas.'
+                : scenario.disruption === 'demand'
+                  ? 'Additional demand during the surge.'
+                  : scenario.disruption === 'supplier'
+                    ? 'Production capacity removed.'
+                    : scenario.disruption === 'none'
+                      ? 'No disruption. Explore everyday uncertainty.'
+                      : 'Port handling capacity removed.'}
             </p>
           </div>
           <div className="range-field">
@@ -410,13 +506,14 @@ export default function App() {
                 />
               </label>
               <label>
-                Simulation trials
+                {tab === 'atlas' ? 'Trials per atlas case' : 'Simulation trials'}
                 <select
                   aria-label="Simulation trials"
-                  value={scenario.trials}
+                  value={tab === 'atlas' ? ATLAS_TRIALS : scenario.trials}
+                  disabled={tab === 'atlas'}
                   onChange={(e) => update({ trials: Number(e.target.value) })}
                 >
-                  {[...new Set([60, 120, 300, scenario.trials])]
+                  {[...new Set([ATLAS_TRIALS, 60, 120, 300, scenario.trials])]
                     .sort((a, b) => a - b)
                     .map((n) => (
                       <option key={n} value={n}>
@@ -462,7 +559,7 @@ export default function App() {
           <nav aria-label="Workspace views">
             <button
               className={tab === 'lab' ? 'active' : ''}
-              onClick={() => setTab('lab')}
+              onClick={() => navigate('lab')}
               aria-current={tab === 'lab' ? 'page' : undefined}
             >
               <FlaskConical size={15} />
@@ -470,11 +567,19 @@ export default function App() {
             </button>
             <button
               className={tab === 'compare' ? 'active' : ''}
-              onClick={() => setTab('compare')}
+              onClick={() => navigate('compare')}
               aria-current={tab === 'compare' ? 'page' : undefined}
             >
               <GitBranch size={15} />
-              Strategy comparison
+              Compare
+            </button>
+            <button
+              className={tab === 'atlas' ? 'active' : ''}
+              onClick={() => navigate('atlas')}
+              aria-current={tab === 'atlas' ? 'page' : undefined}
+            >
+              <Grid3X3 size={15} />
+              Resilience atlas
             </button>
           </nav>
           <div className="topbar-right">
@@ -489,46 +594,68 @@ export default function App() {
             </a>
           </div>
         </header>
-        <main id="main">
-          <div className="intro">
-            <div>
-              <div className="intro-eyebrow">
-                <span className="tiny-cross">+</span> SUPPLY CHAIN STRESS LAB{' '}
-                <span className="intro-version">v1.0</span>
+        <main
+          id="main"
+          ref={mainRef}
+          tabIndex={-1}
+          aria-label={
+            tab === 'atlas'
+              ? 'Resilience atlas workspace'
+              : tab === 'compare'
+                ? 'Strategy comparison workspace'
+                : 'Stress lab workspace'
+          }
+        >
+          <div hidden={tab === 'atlas'}>
+            <div className="intro">
+              <div>
+                <div className="intro-eyebrow">
+                  <span className="tiny-cross">+</span> SUPPLY CHAIN STRESS LAB{' '}
+                  <span className="intro-version">v1.1</span>
+                </div>
+                <h1>
+                  Break the chain.
+                  <br />
+                  <span>Find a better plan.</span>
+                </h1>
+                <p>One disruption. A thousand consequences. Explore them before they happen.</p>
+                <button className="atlas-entry" onClick={() => navigate('atlas')}>
+                  <span>NEW</span> Find where your strategy stops working <ArrowUpRight size={14} />
+                </button>
               </div>
-              <h1>
-                Break the chain.
-                <br />
-                <span>Find a better plan.</span>
-              </h1>
-              <p>One disruption. A thousand consequences. Explore them before they happen.</p>
-            </div>
-            <div className="intro-actions">
-              <button className="secondary-button" onClick={share}>
-                <Share2 size={15} />
-                Share scenario
-              </button>
-              <button
-                className="primary-button"
-                onClick={() => setModal('export')}
-                disabled={!ready}
-              >
-                <Download size={15} />
-                Export results
-              </button>
-              <button
-                className="tour-link"
-                onClick={() => {
-                  setTourStep(0);
-                  setModal('tour');
-                }}
-              >
-                <Play size={11} />
-                Take the 60-second tour
-                <ArrowUpRight size={13} />
-              </button>
+              <div className="intro-actions">
+                <button className="secondary-button" onClick={share}>
+                  <Share2 size={15} />
+                  Share scenario
+                </button>
+                <button
+                  className="primary-button"
+                  onClick={() => setModal('export')}
+                  disabled={!ready}
+                >
+                  <Download size={15} />
+                  Export results
+                </button>
+                <button
+                  className="tour-link"
+                  onClick={() => {
+                    setTourStep(0);
+                    setModal('tour');
+                  }}
+                >
+                  <Play size={11} />
+                  Take the 60-second tour
+                  <ArrowUpRight size={13} />
+                </button>
+              </div>
             </div>
           </div>
+          {fromAtlas && tab === 'lab' && (
+            <button className="atlas-back text-button" onClick={() => navigate('atlas')}>
+              <ArrowLeft size={14} />
+              Back to resilience atlas
+            </button>
+          )}
           {notice && (
             <div className="notice" role="status">
               <CircleHelp size={17} />
@@ -538,417 +665,434 @@ export default function App() {
               </button>
             </div>
           )}
-          {error && (
-            <div className="error-notice" role="alert">
-              <strong>Experiment could not finish.</strong>
-              <p>{error}</p>
-              <button onClick={reset}>Reset and retry</button>
+          <div hidden={tab === 'atlas'}>
+            {error && (
+              <div className="error-notice" role="alert">
+                <strong>Experiment could not finish.</strong>
+                <p>{error}</p>
+                <button onClick={reset}>Reset and retry</button>
+              </div>
+            )}
+            <div className="experiment-heading">
+              <div>
+                <span className={`status-dot ${busy ? 'working' : ''}`} />
+                <strong>{scenario.name}</strong>
+                <span className="experiment-label">{scenario.horizon}-day horizon</span>
+              </div>
+              <span className="run-status" role="status">
+                {busy
+                  ? 'Computing strategies…'
+                  : error
+                    ? 'Simulation unavailable'
+                    : `${scenario.trials} trials × 4 strategies · seed ${scenario.seed}`}
+              </span>
             </div>
-          )}
-          <div className="experiment-heading">
-            <div>
-              <span className={`status-dot ${busy ? 'working' : ''}`} />
-              <strong>{scenario.name}</strong>
-              <span className="experiment-label">{scenario.horizon}-day horizon</span>
-            </div>
-            <span className="run-status" role="status">
-              {busy
-                ? 'Computing strategies…'
-                : error
-                  ? 'Simulation unavailable'
-                  : `${scenario.trials} trials × 4 strategies · seed ${scenario.seed}`}
-            </span>
-          </div>
 
-          {selected && baseline && (
-            <section
-              className={`metrics ${!ready ? 'is-pending' : ''}`}
-              aria-label="Simulation results"
-              aria-busy={busy}
-            >
-              <div className="metric">
-                <span className="metric-label">
-                  Demand fulfilled
-                  <ShieldCheck size={15} />
-                </span>
-                <strong>{percent(selected.serviceLevel)}</strong>
-                <span
-                  className={
-                    selected.serviceLevel >= baseline.serviceLevel ? 'positive' : 'negative'
-                  }
-                >
-                  {policy === 'baseline'
-                    ? 'Mean across simulated trials'
-                    : `${((selected.serviceLevel - baseline.serviceLevel) * 100).toFixed(1)} percentage points vs baseline`}
-                </span>
-              </div>
-              <div className="metric">
-                <span className="metric-label">
-                  Lost sales revenue
-                  <TrendingUp size={15} />
-                </span>
-                <strong>{dollars(selected.lostRevenue)}</strong>
-                <span>
-                  {policy === 'baseline'
-                    ? 'Unfilled orders × selling price'
-                    : `${dollars(Math.abs(baseline.lostRevenue - selected.lostRevenue))} ${selected.lostRevenue <= baseline.lostRevenue ? 'less' : 'more'} than baseline`}
-                </span>
-              </div>
-              <div className="metric">
-                <span className="metric-label">
-                  Total modeled cost
-                  <Layers3 size={15} />
-                </span>
-                <strong>{dollars(selected.totalCost)}</strong>
-                <span>Stock + freight + holding + lost margin</span>
-              </div>
-              <div className="metric">
-                <span className="metric-label">
-                  Median recovery
-                  <RotateCcw size={15} />
-                </span>
-                <strong className={selected.recoveryDay === null ? 'word-metric' : ''}>
-                  {!hasDisruption
-                    ? 'Not applicable'
-                    : selected.recoveryDay === null
-                      ? 'Not observed'
-                      : `Day ${Math.round(selected.recoveryDay) + 1}`}
-                </strong>
-                <span>
-                  {hasDisruption ? '7 days ≥95%; window ≥98%' : 'No disruption to recover from'}
-                </span>
-              </div>
-            </section>
-          )}
-
-          {tab === 'lab' ? (
-            <>
-              <section className="network-panel" aria-label="Supply network and replay">
-                <div className="panel-topline">
-                  <div>
-                    <span className="eyebrow">NETWORK / PACIFIC CORRIDOR</span>
-                    <span className="network-subtitle">
-                      Three supply routes. One connected system.
-                    </span>
-                  </div>
-                  <span className={`network-status ${disrupted ? 'disrupted' : ''}`}>
-                    <span />
-                    {disrupted
-                      ? 'Disruption active'
-                      : hasDisruption && day >= scenario.startDay + scenario.duration
-                        ? 'Recovery window'
-                        : 'Network operating'}
+            {selected && baseline && (
+              <section
+                className={`metrics ${!ready ? 'is-pending' : ''}`}
+                aria-label="Simulation results"
+                aria-busy={busy}
+              >
+                <div className="metric">
+                  <span className="metric-label">
+                    Demand fulfilled
+                    <ShieldCheck size={15} />
+                  </span>
+                  <strong>{percent(selected.serviceLevel)}</strong>
+                  <span
+                    className={
+                      selected.serviceLevel >= baseline.serviceLevel ? 'positive' : 'negative'
+                    }
+                  >
+                    {policy === 'baseline'
+                      ? 'Mean across simulated trials'
+                      : `${((selected.serviceLevel - baseline.serviceLevel) * 100).toFixed(1)} percentage points vs baseline`}
                   </span>
                 </div>
-                <NetworkMap scenario={scenario} policy={policy} day={day} playing={playing} />
-                <div className="replay">
-                  <button
-                    className="play-button"
-                    aria-label={playing ? 'Pause replay' : 'Play replay'}
-                    onClick={() => {
-                      if (day === scenario.horizon - 1) setDay(0);
-                      setPlaying(!playing);
-                    }}
-                  >
-                    {playing ? <Pause size={16} /> : <Play size={16} />}
-                  </button>
-                  <button
-                    className="icon-button"
-                    aria-label="Reset replay"
-                    onClick={() => {
-                      setPlaying(false);
-                      setDay(0);
-                    }}
-                  >
+                <div className="metric">
+                  <span className="metric-label">
+                    Lost sales revenue
+                    <TrendingUp size={15} />
+                  </span>
+                  <strong>{dollars(selected.lostRevenue)}</strong>
+                  <span>
+                    {policy === 'baseline'
+                      ? 'Unfilled orders × selling price'
+                      : `${dollars(Math.abs(baseline.lostRevenue - selected.lostRevenue))} ${selected.lostRevenue <= baseline.lostRevenue ? 'less' : 'more'} than baseline`}
+                  </span>
+                </div>
+                <div className="metric">
+                  <span className="metric-label">
+                    Total modeled cost
+                    <Layers3 size={15} />
+                  </span>
+                  <strong>{dollars(selected.totalCost)}</strong>
+                  <span>Stock + freight + holding + lost margin</span>
+                </div>
+                <div className="metric">
+                  <span className="metric-label">
+                    Median recovery
                     <RotateCcw size={15} />
-                  </button>
-                  <div className="day-label">
-                    <strong>DAY {String(day + 1).padStart(2, '0')}</strong>
-                    <span>of {scenario.horizon}</span>
+                  </span>
+                  <strong className={selected.recoveryDay === null ? 'word-metric' : ''}>
+                    {!hasDisruption
+                      ? 'Not applicable'
+                      : selected.recoveryDay === null
+                        ? 'Not observed'
+                        : `Day ${Math.round(selected.recoveryDay) + 1}`}
+                  </strong>
+                  <span>
+                    {hasDisruption ? '7 days ≥95%; window ≥98%' : 'No disruption to recover from'}
+                  </span>
+                </div>
+              </section>
+            )}
+
+            {tab === 'lab' ? (
+              <>
+                <section className="network-panel" aria-label="Supply network and replay">
+                  <div className="panel-topline">
+                    <div>
+                      <span className="eyebrow">NETWORK / PACIFIC CORRIDOR</span>
+                      <span className="network-subtitle">
+                        Three supply routes. One connected system.
+                      </span>
+                    </div>
+                    <span className={`network-status ${disrupted ? 'disrupted' : ''}`}>
+                      <span />
+                      {disrupted
+                        ? 'Disruption active'
+                        : hasDisruption && day >= scenario.startDay + scenario.duration
+                          ? 'Recovery window'
+                          : 'Network operating'}
+                    </span>
                   </div>
-                  <div className="timeline">
-                    <label className="sr-only" htmlFor="replay">
-                      Simulation day
-                    </label>
-                    <input
-                      id="replay"
-                      type="range"
-                      min="0"
-                      max={scenario.horizon - 1}
-                      value={Math.min(day, scenario.horizon - 1)}
-                      onChange={(e) => {
-                        setDay(Number(e.target.value));
+                  <NetworkMap scenario={scenario} policy={policy} day={day} playing={playing} />
+                  <div className="replay">
+                    <button
+                      className="play-button"
+                      aria-label={playing ? 'Pause replay' : 'Play replay'}
+                      onClick={() => {
+                        if (day === scenario.horizon - 1) setDay(0);
+                        setPlaying(!playing);
+                      }}
+                    >
+                      {playing ? <Pause size={16} /> : <Play size={16} />}
+                    </button>
+                    <button
+                      className="icon-button"
+                      aria-label="Reset replay"
+                      onClick={() => {
+                        setPlaying(false);
+                        setDay(0);
+                      }}
+                    >
+                      <RotateCcw size={15} />
+                    </button>
+                    <div className="day-label">
+                      <strong>DAY {String(day + 1).padStart(2, '0')}</strong>
+                      <span>of {scenario.horizon}</span>
+                    </div>
+                    <div className="timeline">
+                      <label className="sr-only" htmlFor="replay">
+                        Simulation day
+                      </label>
+                      <input
+                        id="replay"
+                        type="range"
+                        min="0"
+                        max={scenario.horizon - 1}
+                        value={Math.min(day, scenario.horizon - 1)}
+                        onChange={(e) => {
+                          setDay(Number(e.target.value));
+                          setPlaying(false);
+                        }}
+                      />
+                      <div className="timeline-labels">
+                        <span>Day 1</span>
+                        <span>
+                          {hasDisruption
+                            ? `Disruption: days ${scenario.startDay + 1}–${scenario.startDay + scenario.duration}`
+                            : 'No disruption injected'}
+                        </span>
+                        <span>Day {scenario.horizon}</span>
+                      </div>
+                    </div>
+                    <span className="replay-speed">1 DAY / TICK</span>
+                  </div>
+                </section>
+                <section className="strategy-section" aria-label="Recovery strategy">
+                  <div className="section-heading">
+                    <div>
+                      <span className="eyebrow">03 / CHANGE THE RESPONSE</span>
+                      <h2>Same disruption. Different decisions.</h2>
+                    </div>
+                    <button className="text-button" onClick={() => navigate('compare')}>
+                      Compare strategies
+                      <ArrowRight size={15} />
+                    </button>
+                  </div>
+                  <div className="policy-list">
+                    {POLICIES.map((p, index) => (
+                      <button
+                        key={p.id}
+                        className={`policy-card ${policy === p.id ? 'selected' : ''}`}
+                        onClick={() => setPolicy(p.id)}
+                        aria-pressed={policy === p.id}
+                      >
+                        <span className="policy-top">
+                          <span className="policy-number">0{index + 1}</span>
+                          <span className="policy-check">
+                            {policy === p.id && <Check size={12} />}
+                          </span>
+                        </span>
+                        <strong>{p.name}</strong>
+                        <span className="policy-description">{p.description}</span>
+                        {result?.bestPolicy === p.id && (
+                          <span className="best-tag">Lowest modeled cost</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+                {selected && baseline && (
+                  <section className={`analysis-grid ${!ready ? 'is-pending' : ''}`}>
+                    <InventoryChart
+                      result={selected}
+                      baseline={baseline}
+                      scenario={result!.scenario}
+                      day={day}
+                      onDay={(value) => {
+                        setDay(value);
                         setPlaying(false);
                       }}
                     />
-                    <div className="timeline-labels">
-                      <span>Day 1</span>
-                      <span>
-                        {hasDisruption
-                          ? `Disruption: days ${scenario.startDay + 1}–${scenario.startDay + scenario.duration}`
-                          : 'No disruption injected'}
-                      </span>
-                      <span>Day {scenario.horizon}</span>
-                    </div>
-                  </div>
-                  <span className="replay-speed">1 DAY / TICK</span>
-                </div>
-              </section>
-              <section className="strategy-section" aria-label="Recovery strategy">
-                <div className="section-heading">
-                  <div>
-                    <span className="eyebrow">03 / CHANGE THE RESPONSE</span>
-                    <h2>Same disruption. Different decisions.</h2>
-                  </div>
-                  <button className="text-button" onClick={() => setTab('compare')}>
-                    Compare strategies
-                    <ArrowRight size={15} />
-                  </button>
-                </div>
-                <div className="policy-list">
-                  {POLICIES.map((p, index) => (
-                    <button
-                      key={p.id}
-                      className={`policy-card ${policy === p.id ? 'selected' : ''}`}
-                      onClick={() => setPolicy(p.id)}
-                      aria-pressed={policy === p.id}
-                    >
-                      <span className="policy-top">
-                        <span className="policy-number">0{index + 1}</span>
-                        <span className="policy-check">
-                          {policy === p.id && <Check size={12} />}
-                        </span>
-                      </span>
-                      <strong>{p.name}</strong>
-                      <span className="policy-description">{p.description}</span>
-                      {result?.bestPolicy === p.id && (
-                        <span className="best-tag">Lowest modeled cost</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </section>
-              {selected && baseline && (
-                <section className={`analysis-grid ${!ready ? 'is-pending' : ''}`}>
-                  <InventoryChart
-                    result={selected}
-                    baseline={baseline}
-                    scenario={result!.scenario}
-                    day={day}
-                    onDay={(value) => {
-                      setDay(value);
-                      setPlaying(false);
-                    }}
-                  />
-                  <div className="decision-card">
-                    <div className="decision-top">
-                      <span className="eyebrow">THE DECISION BRIEF</span>
-                      <Sparkles size={16} />
-                    </div>
-                    <h2>
-                      {bestPolicy?.name ?? 'Calculating'}
-                      <span>
-                        {result?.bestPolicy === 'baseline'
-                          ? 'holds its own.'
-                          : 'changes the outcome.'}
-                      </span>
-                    </h2>
-                    <p>
-                      {savings > 1 ? (
-                        <>
-                          Under these assumptions, this strategy cuts modeled cost by{' '}
-                          <strong>{dollars(savings)}</strong> versus the baseline.
-                        </>
-                      ) : (
-                        <>
-                          Adding a response costs more than it saves in this experiment. The
-                          baseline has the lowest modeled cost.
-                        </>
-                      )}
-                    </p>
-                    <div className="decision-stat">
-                      <strong>{best ? percent(best.serviceLevel) : '—'}</strong>
-                      <span>
-                        of demand fulfilled
-                        <br />
-                        with this strategy
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => {
-                        if (result) setPolicy(result.bestPolicy);
-                        setTab('compare');
-                      }}
-                    >
-                      Inspect the trade-offs
-                      <ArrowUpRight size={17} />
-                    </button>
-                    <small>
-                      Calculated from this experiment.
-                      <br />
-                      Synthetic data, not an operating forecast.
-                    </small>
-                  </div>
-                </section>
-              )}
-              {sample && (
-                <div className="day-inspector">
-                  <Radio size={16} />
-                  <span>
-                    <strong>Replay · day {day + 1}</strong> · one seeded trial
-                  </span>
-                  <span>{number(sample.received)} received</span>
-                  <span>
-                    {number(sample.fulfilled)} / {number(sample.demand)} fulfilled
-                  </span>
-                  <span>{number(sample.inTransit)} in transit</span>
-                  <span>{number(sample.inventory)} in stock</span>
-                </div>
-              )}
-            </>
-          ) : (
-            <section className={`comparison-panel ${!ready ? 'is-pending' : ''}`} aria-busy={busy}>
-              <div className="comparison-intro">
-                <span className="eyebrow">A CONTROLLED EXPERIMENT</span>
-                <h2>Make the trade-off visible.</h2>
-                <p>
-                  Every strategy faces the same demand and random seed. Lower cost can mean more
-                  lost sales. Decide which outcome matters.
-                </p>
-              </div>
-              {result && baseline && (
-                <>
-                  <div className="table-scroll">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th scope="col">Response strategy</th>
-                          <th scope="col">Demand fulfilled</th>
-                          <th scope="col">Lost revenue</th>
-                          <th scope="col">Total cost</th>
-                          <th scope="col">Cost vs baseline</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {result.policies.map((p) => (
-                          <tr
-                            key={p.policy}
-                            className={p.policy === result.bestPolicy ? 'best-row' : ''}
-                          >
-                            <th scope="row">
-                              <button
-                                onClick={() => {
-                                  setPolicy(p.policy);
-                                  setTab('lab');
-                                }}
-                              >
-                                {POLICIES.find((item) => item.id === p.policy)!.name}
-                                <ArrowUpRight size={14} />
-                              </button>
-                              {p.policy === result.bestPolicy && <span>Lowest modeled cost</span>}
-                            </th>
-                            <td>
-                              <strong>{percent(p.serviceLevel)}</strong>
-                              <small>
-                                {percent(p.serviceBand.p10)}–{percent(p.serviceBand.p90)} range
-                              </small>
-                            </td>
-                            <td>{dollars(p.lostRevenue, false)}</td>
-                            <td>
-                              <strong>{dollars(p.totalCost, false)}</strong>
-                            </td>
-                            <td
-                              className={
-                                p.totalCost <= baseline.totalCost ? 'positive' : 'negative'
-                              }
-                            >
-                              {p.policy === 'baseline'
-                                ? 'Reference'
-                                : `${p.totalCost <= baseline.totalCost ? '−' : '+'}${dollars(Math.abs(p.totalCost - baseline.totalCost), false)}`}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className="cost-section">
-                    <div>
-                      <h3>What are you paying for?</h3>
-                      <p>Cost composition, mean across {result.scenario.trials} trials</p>
-                    </div>
-                    <div className="cost-legend">
-                      <span>
-                        <i style={{ background: '#1e5754' }} />
-                        Procurement
-                      </span>
-                      <span>
-                        <i style={{ background: '#6c998b' }} />
-                        Freight
-                      </span>
-                      <span>
-                        <i style={{ background: '#bfce9b' }} />
-                        Holding
-                      </span>
-                      <span>
-                        <i style={{ background: '#dc885f' }} />
-                        Lost margin
-                      </span>
-                    </div>
-                    {result.policies.map((p) => (
-                      <div className="cost-row" key={p.policy}>
-                        <span>{POLICIES.find((item) => item.id === p.policy)!.shortName}</span>
-                        <div
-                          className="cost-bar"
-                          role="img"
-                          aria-label={`${p.policy}: procurement ${dollars(p.procurementCost, false)}, freight ${dollars(p.transportCost, false)}, holding ${dollars(p.holdingCost, false)}, lost margin ${dollars(p.lostMargin, false)}`}
-                          style={{
-                            width: `${(p.totalCost / Math.max(...result.policies.map((item) => item.totalCost))) * 100}%`,
-                          }}
-                        >
-                          {[
-                            { value: p.procurementCost, color: '#1e5754' },
-                            { value: p.transportCost, color: '#6c998b' },
-                            { value: p.holdingCost, color: '#bfce9b' },
-                            { value: p.lostMargin, color: '#dc885f' },
-                          ].map((segment, i) => (
-                            <span
-                              key={i}
-                              style={{
-                                width: `${(segment.value / Math.max(1, p.totalCost)) * 100}%`,
-                                background: segment.color,
-                              }}
-                            />
-                          ))}
-                        </div>
-                        <strong>{dollars(p.totalCost)}</strong>
+                    <div className="decision-card">
+                      <div className="decision-top">
+                        <span className="eyebrow">THE DECISION BRIEF</span>
+                        <Sparkles size={16} />
                       </div>
-                    ))}
+                      <h2>
+                        {bestPolicy?.name ?? 'Calculating'}
+                        <span>
+                          {result?.bestPolicy === 'baseline'
+                            ? 'holds its own.'
+                            : 'changes the outcome.'}
+                        </span>
+                      </h2>
+                      <p>
+                        {savings > 1 ? (
+                          <>
+                            Under these assumptions, this strategy cuts modeled cost by{' '}
+                            <strong>{dollars(savings)}</strong> versus the baseline.
+                          </>
+                        ) : (
+                          <>
+                            Adding a response costs more than it saves in this experiment. The
+                            baseline has the lowest modeled cost.
+                          </>
+                        )}
+                      </p>
+                      <div className="decision-stat">
+                        <strong>{best ? percent(best.serviceLevel) : '—'}</strong>
+                        <span>
+                          of demand fulfilled
+                          <br />
+                          with this strategy
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (result) setPolicy(result.bestPolicy);
+                          navigate('compare');
+                        }}
+                      >
+                        Inspect the trade-offs
+                        <ArrowUpRight size={17} />
+                      </button>
+                      <small>
+                        Calculated from this experiment.
+                        <br />
+                        Synthetic data, not an operating forecast.
+                      </small>
+                    </div>
+                  </section>
+                )}
+                {sample && (
+                  <div className="day-inspector">
+                    <Radio size={16} />
+                    <span>
+                      <strong>Replay · day {day + 1}</strong> · one seeded trial
+                    </span>
+                    <span>{number(sample.received)} received</span>
+                    <span>
+                      {number(sample.fulfilled)} / {number(sample.demand)} fulfilled
+                    </span>
+                    <span>{number(sample.inTransit)} in transit</span>
+                    <span>{number(sample.inventory)} in stock</span>
                   </div>
-                  <div className="comparison-footnote">
-                    <BookOpen size={18} />
-                    <p>
-                      Ranges show the 10th–90th percentile across simulated trials, not a confidence
-                      interval. Total cost includes lost contribution margin, not lost revenue.
-                      Closing inventory has no salvage credit.{' '}
-                      <button onClick={() => setModal('model')}>Read assumptions</button>
-                    </p>
-                  </div>
-                </>
-              )}
-              <button className="secondary-button" onClick={() => setTab('lab')}>
-                <ArrowLeft size={15} />
-                Back to the network
-              </button>
-            </section>
-          )}
+                )}
+              </>
+            ) : (
+              <section
+                className={`comparison-panel ${!ready ? 'is-pending' : ''}`}
+                aria-busy={busy}
+              >
+                <div className="comparison-intro">
+                  <span className="eyebrow">A CONTROLLED EXPERIMENT</span>
+                  <h2>Make the trade-off visible.</h2>
+                  <p>
+                    Every strategy faces the same demand and random seed. Lower cost can mean more
+                    lost sales. Decide which outcome matters.
+                  </p>
+                </div>
+                {result && baseline && (
+                  <>
+                    <div className="table-scroll">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th scope="col">Response strategy</th>
+                            <th scope="col">Demand fulfilled</th>
+                            <th scope="col">Lost revenue</th>
+                            <th scope="col">Total cost</th>
+                            <th scope="col">Cost vs baseline</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {result.policies.map((p) => (
+                            <tr
+                              key={p.policy}
+                              className={p.policy === result.bestPolicy ? 'best-row' : ''}
+                            >
+                              <th scope="row">
+                                <button
+                                  onClick={() => {
+                                    setPolicy(p.policy);
+                                    navigate('lab');
+                                  }}
+                                >
+                                  {POLICIES.find((item) => item.id === p.policy)!.name}
+                                  <ArrowUpRight size={14} />
+                                </button>
+                                {p.policy === result.bestPolicy && <span>Lowest modeled cost</span>}
+                              </th>
+                              <td>
+                                <strong>{percent(p.serviceLevel)}</strong>
+                                <small>
+                                  {percent(p.serviceBand.p10)}–{percent(p.serviceBand.p90)} range
+                                </small>
+                              </td>
+                              <td>{dollars(p.lostRevenue, false)}</td>
+                              <td>
+                                <strong>{dollars(p.totalCost, false)}</strong>
+                              </td>
+                              <td
+                                className={
+                                  p.totalCost <= baseline.totalCost ? 'positive' : 'negative'
+                                }
+                              >
+                                {p.policy === 'baseline'
+                                  ? 'Reference'
+                                  : `${p.totalCost <= baseline.totalCost ? '−' : '+'}${dollars(Math.abs(p.totalCost - baseline.totalCost), false)}`}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="cost-section">
+                      <div>
+                        <h3>What are you paying for?</h3>
+                        <p>Cost composition, mean across {result.scenario.trials} trials</p>
+                      </div>
+                      <div className="cost-legend">
+                        <span>
+                          <i style={{ background: '#1e5754' }} />
+                          Procurement
+                        </span>
+                        <span>
+                          <i style={{ background: '#6c998b' }} />
+                          Freight
+                        </span>
+                        <span>
+                          <i style={{ background: '#bfce9b' }} />
+                          Holding
+                        </span>
+                        <span>
+                          <i style={{ background: '#dc885f' }} />
+                          Lost margin
+                        </span>
+                      </div>
+                      {result.policies.map((p) => (
+                        <div className="cost-row" key={p.policy}>
+                          <span>{POLICIES.find((item) => item.id === p.policy)!.shortName}</span>
+                          <div
+                            className="cost-bar"
+                            role="img"
+                            aria-label={`${p.policy}: procurement ${dollars(p.procurementCost, false)}, freight ${dollars(p.transportCost, false)}, holding ${dollars(p.holdingCost, false)}, lost margin ${dollars(p.lostMargin, false)}`}
+                            style={{
+                              width: `${(p.totalCost / Math.max(...result.policies.map((item) => item.totalCost))) * 100}%`,
+                            }}
+                          >
+                            {[
+                              { value: p.procurementCost, color: '#1e5754' },
+                              { value: p.transportCost, color: '#6c998b' },
+                              { value: p.holdingCost, color: '#bfce9b' },
+                              { value: p.lostMargin, color: '#dc885f' },
+                            ].map((segment, i) => (
+                              <span
+                                key={i}
+                                style={{
+                                  width: `${(segment.value / Math.max(1, p.totalCost)) * 100}%`,
+                                  background: segment.color,
+                                }}
+                              />
+                            ))}
+                          </div>
+                          <strong>{dollars(p.totalCost)}</strong>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="comparison-footnote">
+                      <BookOpen size={18} />
+                      <p>
+                        Ranges show the 10th–90th percentile across simulated trials, not a
+                        confidence interval. Total cost includes lost contribution margin, not lost
+                        revenue. Closing inventory has no salvage credit.{' '}
+                        <button onClick={() => setModal('model')}>Read assumptions</button>
+                      </p>
+                    </div>
+                  </>
+                )}
+                <button className="secondary-button" onClick={() => navigate('lab')}>
+                  <ArrowLeft size={15} />
+                  Back to the network
+                </button>
+              </section>
+            )}
 
-          {!result && !error && (
-            <div className="loading-state" role="status">
-              <div className="loading-orbit" />
-              <h2>Finding the ripple effects…</h2>
-              <p>Simulating four responses to the same disruption.</p>
-            </div>
-          )}
+            {!result && !error && (
+              <div className="loading-state" role="status">
+                <div className="loading-orbit" />
+                <h2>Finding the ripple effects…</h2>
+                <p>Simulating four responses to the same disruption.</p>
+              </div>
+            )}
+          </div>
+          <ResilienceAtlas
+            scenario={scenario}
+            active={tab === 'atlas'}
+            onOpenScenario={openAtlasScenario}
+            onChooseDisruption={(next) => {
+              update(next);
+              setFromAtlas(false);
+            }}
+            onModel={() => setModal('model')}
+            onShare={shareAtlas}
+            loadRequest={atlasRequest}
+          />
           <footer className="footer">
             <div>
               <span className="footer-mark">◎</span>
@@ -969,7 +1113,7 @@ export default function App() {
               </button>
               <button onClick={() => uploadRef.current?.click()}>
                 <Upload size={14} />
-                Import scenario
+                Import experiment
               </button>
               <a href="https://github.com/relaywright/ripple" target="_blank" rel="noreferrer">
                 Source code
@@ -1014,9 +1158,12 @@ export default function App() {
                 <span className="eyebrow">02 / THE UNCERTAINTY</span>
                 <h3>Repeatable, not predictable.</h3>
                 <p>
-                  Demand and transit times vary across {scenario.trials} trials. A seeded random
-                  generator gives each policy the same underlying uncertainty. The same scenario and
-                  model version produce the same result.
+                  Demand and transit times vary across{' '}
+                  {tab === 'atlas'
+                    ? `${ATLAS_TRIALS} trials per strategy in each case`
+                    : `${scenario.trials} trials`}
+                  . A seeded random generator gives each policy the same underlying uncertainty. The
+                  same scenario and model version produce the same result.
                 </p>
                 <p>
                   Summary metrics are averages, except recovery: it is the upper median across
@@ -1035,9 +1182,18 @@ export default function App() {
                   shifting new orders to Mexico.
                 </p>
                 <p>
-                  The highlighted strategy minimizes procurement + freight + holding cost + lost
-                  contribution margin. It does not optimize every business objective.
+                  {tab === 'atlas'
+                    ? 'Each atlas cell selects the lowest modeled cost among strategies meeting your minimum mean demand-fulfillment target. If none qualify, the cell says so. Exact-cost ties use the listed policy order.'
+                    : 'The highlighted strategy minimizes procurement + freight + holding cost + lost contribution margin. It does not optimize every business objective.'}
                 </p>
+                {tab === 'atlas' && (
+                  <p>
+                    Duration and severity vary across the grid. Other assumptions stay fixed.
+                    Changing the target re-ranks the completed results. Coverage counts sampled
+                    cases; it is not a probability or a guarantee of daily service. Cost is
+                    procurement + freight + holding + lost contribution margin.
+                  </p>
+                )}
               </section>
               <section>
                 <span className="eyebrow">04 / THE BOUNDARIES</span>
@@ -1057,7 +1213,11 @@ export default function App() {
               <strong>Your experiment</strong>
               <span>{scenario.horizon} days</span>
               <span>{number(scenario.dailyDemand)} units/day</span>
-              <span>{scenario.trials} trials/strategy</span>
+              <span>
+                {tab === 'atlas'
+                  ? `${ATLAS_TRIALS} trials/strategy/case`
+                  : `${scenario.trials} trials/strategy`}
+              </span>
               <span>Seed {scenario.seed}</span>
               <span>Model {result?.modelVersion ?? 'loading'}</span>
             </div>
@@ -1176,13 +1336,14 @@ export default function App() {
         </Dialog>
       )}
       {modal === 'share' && (
-        <Dialog title="Same scenario. Same outcome." onClose={() => setModal(null)}>
+        <Dialog title="Same experiment. Same outcome." onClose={() => setModal(null)}>
           <p className="modal-lead">
-            This link contains your experiment settings and random seed. Anyone can reproduce it
-            with this model version.
+            {shareContext === 'atlas'
+              ? 'This link includes the scan inputs, sampled axes, service target, trial count, and model versions. Anyone can rebuild the atlas.'
+              : 'This link contains your experiment settings and random seed. Anyone can reproduce it with this model version.'}
           </p>
           <label className="share-label" htmlFor="share-link">
-            Scenario link
+            {shareContext === 'atlas' ? 'Atlas link' : 'Scenario link'}
           </label>
           <textarea
             id="share-link"

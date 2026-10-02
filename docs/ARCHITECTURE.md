@@ -19,12 +19,22 @@ flowchart LR
 | -------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `src/simulation/`          | Types, model parameters, scenario validation, seeded simulation, and numerical tests. No React dependency. |
 | `src/simulation.worker.ts` | Validate worker messages, run experiments, and return either a result or a readable error.                 |
+| `src/atlas.worker.ts`      | Compute a bounded grid and report request-scoped progress, completion, or errors.                          |
 | `src/App.tsx`              | Scenario controls, experiment lifecycle, policy selection, replay, dialogs, and persistence.               |
 | `src/components/`          | Network and inventory visualizations.                                                                      |
 | `src/lib/scenario.ts`      | Bounded JSON parsing, URL encoding and decoding, and local downloads.                                      |
 | `src/lib/export.ts`        | CSV results and a standalone HTML decision brief.                                                          |
+| `src/lib/atlas-export.ts`  | Validate and transport Atlas manifests; generate the full grid CSV and HTML brief.                         |
 | `src/data/`                | Synthetic network definitions and bundled geographic data.                                                 |
 | `tests/e2e/`               | Browser checks against the production build.                                                               |
+
+## Resilience Atlas
+
+The [Atlas reference](ATLAS.md) defines its axes, service target, evidence, and limits. `src/simulation/atlas.ts` composes the existing single-scenario engine into a bounded grid; it does not change the underlying supply-chain equations. Each case runs all four policies with 30 trials and the same seed. Its duration and severity vary while other assumptions remain fixed.
+
+Grid computation belongs in a dedicated worker. Progress identifies completed cases, and cancellation terminates obsolete work. The interface keeps result identity tied to the inputs so that late messages cannot replace a newer experiment. Target changes operate on cached metrics: eligibility is the unrounded mean fulfillment rate greater than or equal to the target, followed by lowest mean modeled cost among eligible policies. No eligible policy is an explicit outcome.
+
+Case drilldown constructs the exact scenario used by that cell, including its 30-trial count. Shared Atlas links and manifest imports validate the experiment configuration before rerunning it. Exports include the configuration and model version; they do not turn imported output into trusted results. Case counts use equal weights over the selected grid and are never represented as real-world probabilities.
 
 ## Reproducibility
 

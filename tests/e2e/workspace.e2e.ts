@@ -96,7 +96,7 @@ test('changes disruptions and recomputes bounded conditions', async ({ page }) =
   await ready(page);
   await expect(duration).toHaveValue('1');
   await expect(page.getByRole('region', { name: 'Simulation results' })).not.toHaveText(before!);
-  const severity = page.getByLabel('Severity', { exact: true });
+  const severity = page.getByRole('slider', { name: 'Severity', exact: true });
   await severity.focus();
   await severity.press('Home');
   await ready(page);
