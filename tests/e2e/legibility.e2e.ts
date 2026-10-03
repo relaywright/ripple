@@ -40,9 +40,15 @@ async function assertLegible(page: Page, view: string) {
       `${view}: no horizontal page overflow`,
     )
     .toBe(true);
-  const covered = await page.evaluate(() => {
-    const card = document.querySelector('.ripple-map__inspector')?.getBoundingClientRect();
-    if (!card) return [];
+}
+
+// Only views that show the map; requires the card and labels so the check cannot pass empty.
+async function assertMapLabelsUncovered(page: Page, view: string) {
+  const inspector = page.locator('.ripple-map__inspector');
+  await expect(inspector, `${view}: map inspector card is shown`).toBeVisible();
+  await expect(page.locator('.ripple-map svg text').first()).toBeVisible();
+  const covered = await inspector.evaluate((element) => {
+    const card = element.getBoundingClientRect();
     const labels = document.querySelectorAll('.ripple-map svg text, .ripple-map__select-hint');
     return Array.from(labels).flatMap((label) => {
       const box = label.getBoundingClientRect();
@@ -68,6 +74,7 @@ test('workspace text stays at least 12px on screen with results showing', async 
     await controls.click();
   await page.locator('.advanced summary').click();
   await assertLegible(page, 'Workspace results and controls');
+  await assertMapLabelsUncovered(page, 'Workspace results and controls');
   await page.getByRole('button', { name: 'Compare strategies', exact: true }).click();
   await expect(page.getByRole('table')).toBeVisible();
   await assertLegible(page, 'Strategy comparison');
