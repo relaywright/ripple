@@ -292,8 +292,9 @@ export default function ResilienceAtlas({
           </span>
           <h1>Good plans have limits.</h1>
           <p>
-            Find the lowest-cost response that meets your service target, as disruptions get longer
-            and harder.
+            One experiment tests one disruption. The atlas tests up to 36 versions of it, from a
+            1-day blip to a 60-day crisis, and shows the cheapest response that still fills enough
+            orders in each.
           </p>
         </div>
         <button className="atlas-about" onClick={onModel}>

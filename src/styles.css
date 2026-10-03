@@ -541,6 +541,52 @@ h1 > span {
   color: #657569;
   line-height: 1.7;
   margin-top: 15px;
+  max-width: 560px;
+}
+.how-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 28px;
+  padding: 0;
+  list-style: none;
+}
+.how-steps li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 12px;
+  row-gap: 3px;
+  align-items: baseline;
+  padding: 14px 16px;
+  background: #ffffff;
+  border: 1px solid #dce0d7;
+  border-radius: 12px;
+}
+.how-steps span {
+  grid-row: span 2;
+  font: var(--type-label) var(--mono);
+  letter-spacing: 1px;
+  color: #1a5553;
+  background: #e3e8db;
+  padding: 3px 6px;
+  border-radius: 3px;
+}
+.how-steps strong {
+  font-size: var(--type-body);
+  font-weight: 700;
+  color: #173739;
+}
+.how-steps small {
+  font-size: var(--type-body);
+  line-height: 1.5;
+  color: #52634c;
+}
+@media (max-width: 980px) {
+  .how-steps {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
 }
 .intro-actions {
   display: grid;
@@ -1665,7 +1711,7 @@ h1 > span {
     letter-spacing: -2px;
   }
   .intro p {
-    max-width: 290px;
+    max-width: 420px;
   }
   .intro-actions {
     grid-template-columns: 1fr;

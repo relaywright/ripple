@@ -54,6 +54,28 @@ type Tab = 'lab' | 'compare' | 'atlas';
 type Modal = 'model' | 'tour' | 'export' | 'share' | null;
 const iconFor = { port: Ship, supplier: Factory, demand: TrendingUp, none: Waves };
 const storageKey = 'ripple-scenario-v1';
+const tour = [
+  {
+    icon: Waves,
+    title: 'A safe place to break a supply chain.',
+    body: 'RIPPLE simulates an invented company: three suppliers ship one product to a Chicago warehouse. Break a link, and see how long the damage lasts and what each response costs.',
+  },
+  {
+    icon: Ship,
+    title: 'Start with a broken port.',
+    body: 'The default experiment cuts Los Angeles port capacity for 21 days. Press play or drag the timeline to watch stock drain and recover. Select a city on the map to see its role.',
+  },
+  {
+    icon: GitBranch,
+    title: 'Change the response.',
+    body: 'Below the map, switch between staying the course, building a buffer, rerouting freight, and diversifying supply. Every strategy faces the same random demand, so the comparison is fair.',
+  },
+  {
+    icon: Grid3X3,
+    title: 'Find where each plan stops working.',
+    body: 'Open Compare for the full cost breakdown. Open Resilience atlas to test dozens of disruption lengths and severities at once. Share a link or export a brief so others can check your work.',
+  },
+];
 
 function initialWorkspace(): { scenario: Scenario; message: string; atlas?: AtlasManifest } {
   try {
@@ -531,8 +553,18 @@ export default function App() {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 4,
                 })}
-                /unit/day. Edit all assumptions through a scenario file.
+                /unit/day. To change these, export the reproducible scenario, edit the file, and
+                import it.
               </p>
+              <a
+                className="text-button"
+                href="https://github.com/relaywright/ripple/blob/main/docs/GUIDE.md#change-any-setting-with-a-scenario-file"
+                target="_blank"
+                rel="noreferrer"
+              >
+                How to edit a scenario file
+                <ArrowUpRight size={13} />
+              </a>
               <button className="text-button" onClick={() => setModal('model')}>
                 Read the full model
                 <ArrowUpRight size={13} />
@@ -618,7 +650,10 @@ export default function App() {
                   <br />
                   <span>Find a better plan.</span>
                 </h1>
-                <p>One disruption. A thousand consequences. Explore them before they happen.</p>
+                <p>
+                  See what a supply-chain disruption does to stock, sales, and cost, then compare
+                  four ways to respond. The company, routes, and prices are invented for learning.
+                </p>
                 <button className="atlas-entry" onClick={() => navigate('atlas')}>
                   <span>NEW</span> Find where your strategy stops working <ArrowUpRight size={14} />
                 </button>
@@ -649,6 +684,29 @@ export default function App() {
                 </button>
               </div>
             </div>
+            {tab === 'lab' && (
+              <ol className="how-steps" aria-label="How RIPPLE works">
+                <li>
+                  <span>01</span>
+                  <strong>Break something</strong>
+                  <small>Pick a disruption and set how long it lasts and how severe it is.</small>
+                </li>
+                <li>
+                  <span>02</span>
+                  <strong>Watch the ripple</strong>
+                  <small>
+                    Press play to see stock drain, orders go unfilled, and supply recover.
+                  </small>
+                </li>
+                <li>
+                  <span>03</span>
+                  <strong>Compare responses</strong>
+                  <small>
+                    Switch strategies to see which fills the most orders, and at what cost.
+                  </small>
+                </li>
+              </ol>
+            )}
           </div>
           {fromAtlas && tab === 'lab' && (
             <button className="atlas-back text-button" onClick={() => navigate('atlas')}>
@@ -743,7 +801,9 @@ export default function App() {
                         : `Day ${Math.round(selected.recoveryDay) + 1}`}
                   </strong>
                   <span>
-                    {hasDisruption ? '7 days ≥95%; window ≥98%' : 'No disruption to recover from'}
+                    {hasDisruption
+                      ? 'Start of a full week of near-normal service'
+                      : 'No disruption to recover from'}
                   </span>
                 </div>
               </section>
@@ -1137,8 +1197,9 @@ export default function App() {
         <Dialog title="A model you can inspect." onClose={() => setModal(null)} wide>
           <div className="model-content">
             <p className="modal-lead">
-              RIPPLE is a synthetic supply-chain wind tunnel. It makes the consequences of a
-              decision visible, while keeping the assumptions in view.
+              RIPPLE is a practice ground for supply-chain decisions: an invented company where you
+              can break things safely and see what each response costs, with every assumption in
+              view.
             </p>
             <div className="model-grid">
               <section>
@@ -1236,35 +1297,20 @@ export default function App() {
       {modal === 'tour' && (
         <Dialog title="Your first experiment." onClose={() => setModal(null)}>
           <div className="tour-content">
-            <span className="eyebrow">{String(tourStep + 1).padStart(2, '0')} / 03</span>
+            <span className="eyebrow">
+              {String(tourStep + 1).padStart(2, '0')} / {String(tour.length).padStart(2, '0')}
+            </span>
             <div className="tour-art">
-              {tourStep === 0 ? (
-                <Ship size={64} strokeWidth={1} />
-              ) : tourStep === 1 ? (
-                <GitBranch size={64} strokeWidth={1} />
-              ) : (
-                <Layers3 size={64} strokeWidth={1} />
-              )}
+              {(() => {
+                const Art = tour[tourStep].icon;
+                return <Art size={64} strokeWidth={1} />;
+              })()}
             </div>
-            <h3>
-              {
-                ['Start with a broken port.', 'Change the response.', 'Show your evidence.'][
-                  tourStep
-                ]
-              }
-            </h3>
-            <p>
-              {
-                [
-                  'The default experiment removes port capacity at Los Angeles. Drag the timeline to see the disruption and recovery window. Click a map node to understand its role.',
-                  'Below the map, switch between baseline, buffer stock, rerouting, and diversified supply. The charts update from the same seeded demand, so you can compare fairly.',
-                  'Open Strategy comparison to see the full cost trade-off. Export a decision brief, download the data, or share an exact, reproducible scenario.',
-                ][tourStep]
-              }
-            </p>
+            <h3>{tour[tourStep].title}</h3>
+            <p>{tour[tourStep].body}</p>
             <div className="tour-footer">
               <div>
-                {[0, 1, 2].map((i) => (
+                {tour.map((_, i) => (
                   <button
                     key={i}
                     className={i === tourStep ? 'active' : ''}
@@ -1275,9 +1321,11 @@ export default function App() {
               </div>
               <button
                 className="primary-button"
-                onClick={() => (tourStep < 2 ? setTourStep(tourStep + 1) : setModal(null))}
+                onClick={() =>
+                  tourStep < tour.length - 1 ? setTourStep(tourStep + 1) : setModal(null)
+                }
               >
-                {tourStep < 2 ? 'Next' : 'Start exploring'}
+                {tourStep < tour.length - 1 ? 'Next' : 'Start exploring'}
                 <ArrowRight size={15} />
               </button>
             </div>

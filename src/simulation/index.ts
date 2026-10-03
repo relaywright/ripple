@@ -15,7 +15,7 @@ export const POLICIES: Policy[] = [
     id: 'baseline',
     name: 'Stay the course',
     shortName: 'Baseline',
-    description: 'Keep the original sourcing mix and inventory.',
+    description: 'Change nothing: same suppliers, same stock. The benchmark for the others.',
     color: '#8fa1b5',
   },
   {
