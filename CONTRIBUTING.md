@@ -11,7 +11,7 @@ npm ci
 npm run dev
 ```
 
-Read [AGENTS.md](AGENTS.md), [the design system](docs/design-system.md), and [the architecture](docs/ARCHITECTURE.md). The interface uses TypeScript, React, and Vite. The simulation must remain independent of React and browser APIs.
+Read [AGENTS.md](AGENTS.md), [the design system](docs/design-system.md), and [the architecture](docs/ARCHITECTURE.md). The [customization guide](docs/CUSTOMIZING.md) shows where the network, responses, presets, and atlas settings live in the code, and which other files repeat those values. The interface uses TypeScript, React, and Vite. The simulation must remain independent of React and browser APIs.
 
 ## Make a change reviewable
 

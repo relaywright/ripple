@@ -1,5 +1,7 @@
 # A two-minute RIPPLE walkthrough
 
+A script for presenting RIPPLE to someone live. To learn the product yourself, start with the [user guide](GUIDE.md).
+
 Use a current desktop browser. Start from a fresh page with the default port-closure scenario. All numbers you see are synthetic simulation results.
 
 ## Start with the decision

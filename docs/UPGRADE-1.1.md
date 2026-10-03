@@ -1,5 +1,7 @@
 # RIPPLE 1.1: from a scenario to a decision surface
 
+> This is the planning record for the 1.1 release, kept for history. To learn how to use the resilience atlas, read the [user guide](GUIDE.md#the-resilience-atlas). For its exact rules, read the [atlas reference](ATLAS.md).
+
 ## Decision
 
 The original release compares four policies under one set of assumptions. The highest-value extension is to expose how the preferred response changes when those assumptions change. A resilience atlas reuses the tested model and makes the limits of a plan visible.
