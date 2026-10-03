@@ -30,7 +30,7 @@ Each response protects you in a different way and costs a different amount. RIPP
 
 ### The pretend company
 
-All experiments use one invented business with one product and one warehouse in Chicago. It buys from three suppliers:
+All experiments use one invented business, "Northwind Goods," with one product and one warehouse in Chicago. It buys from three suppliers:
 
 - **Shenzhen, China** supplies 65% of orders. Goods sail to Los Angeles, then travel inland. About 22 days door to door. The cheapest source.
 - **Ho Chi Minh City, Vietnam** supplies 25%. Same route through Los Angeles. About 25 days. Costs 5% more.

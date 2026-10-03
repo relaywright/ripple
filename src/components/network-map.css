@@ -45,10 +45,6 @@
   letter-spacing: 1.5px;
   color: #c4d6cc;
 }
-.ripple-map__eyebrow span {
-  margin-left: 3px;
-  color: #879f98;
-}
 .ripple-map__heading p {
   margin: 8px 0 0;
   font-size: var(--type-heading);

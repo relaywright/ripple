@@ -4,7 +4,7 @@
 
 RIPPLE is a free, browser-based "what if" simulator for a small supply chain. You break something (a port slows down, a supplier stops, or demand spikes), and RIPPLE plays out the next 90 days for four different responses. It then shows how many customer orders each response fills and what each one costs.
 
-**[Open RIPPLE in your browser](https://relaywright.github.io/ripple/)** · [Watch the 25-second walkthrough](artifacts/ripple-walkthrough.mp4) · [Read the user guide](docs/GUIDE.md)
+**[Open RIPPLE in your browser](https://relaywright.github.io/ripple/)** · [Watch the 22-second walkthrough](artifacts/ripple-walkthrough.mp4) · [Read the user guide](docs/GUIDE.md)
 
 ![RIPPLE's stress lab: a supply network map, inventory chart, and four response strategies](artifacts/ripple-desktop.png)
 
@@ -26,7 +26,7 @@ RIPPLE is a teaching and exploration tool. Its supply chain is invented, so its 
 
 ## The pretend company
 
-Every experiment uses the same small, made-up network ("Atlas Supply Co."). It sells one product from one warehouse:
+Every experiment uses the same small, made-up company ("Northwind Goods"). It sells one product from one warehouse:
 
 | Supplier                  | Share of orders | Route to the Chicago warehouse   | Typical travel time | Price vs. Shenzhen | Freight per unit |
 | ------------------------- | --------------: | -------------------------------- | ------------------: | -----------------: | ---------------: |

@@ -232,7 +232,7 @@ export default function NetworkMap({ scenario, policy, day, playing }: NetworkMa
       <div className="ripple-map__stage">
         <div className="ripple-map__heading">
           <div className="ripple-map__eyebrow">
-            <Compass size={14} aria-hidden="true" /> NETWORK ATLAS <span>01</span>
+            <Compass size={14} aria-hidden="true" /> WHERE GOODS FLOW
           </div>
           <p>One product. Three origins.</p>
         </div>

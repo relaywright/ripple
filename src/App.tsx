@@ -368,7 +368,7 @@ export default function App() {
               <Layers3 size={15} />
             </span>
             <div>
-              <strong>Atlas Supply Co.</strong>
+              <strong>Northwind Goods</strong>
               <span>Synthetic demo network</span>
             </div>
             <span className="workspace-version">01</span>
