@@ -24,7 +24,7 @@ Fresh screenshots in `artifacts/` show the real desktop and mobile application, 
 
 The current MP4 and WebM walkthrough runs **25.08 seconds**. Both formats were tested at 1440px and 390px: `readyState=4`, playback advanced beyond one second, and seeking near the end reached `ended=true` with no media error. This establishes the tested playback behavior, not uninterrupted playback on every device.
 
-The [version 1.1.0 release](https://github.com/relaywright/ripple/releases/tag/v1.1.0) carries the downloadable static build, its checksums, and the walkthrough. The repository was republished under the relaywright account on 2026-10-03 with rewritten commit identities, so commit IDs changed. The original CI, Pages, and live-check evidence referred to the previous repository and was not carried over; successful verification runs deploy `main` to Pages, and their records live in GitHub Actions. Local checks alone do not establish that a deployment has updated.
+The [version 1.1.0 release](https://github.com/relaywright/ripple/releases/tag/v1.1.0) carries the downloadable static build, its checksums, and the walkthrough. The repository was republished under the relaywright account on 2026-10-03 with rewritten commit identities, so commit IDs changed. The original CI, Pages, and live-check evidence referred to the previous repository and was not carried over; each push to `main` now records a fresh CI and Pages run in GitHub Actions. Local checks alone do not establish that a deployment has updated.
 
 ### Scope
 
